@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tab Link Copier</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-brand">
+      <img src="../icons/icon-48.png" alt="" class="logo">
+      <div>
+        <h1>Tab Link Copier</h1>
+        <p class="subtitle">Copy · Export · Stash · Share tabs anywhere</p>
+      </div>
+    </div>
+    <button id="btn-theme-toggle" class="btn-theme-toggle" title="Toggle theme (Light / Dark / Auto)">🌓</button>
+  </header>
+
+  <!-- ── Incognito Banner (shown when incognito access not granted) ── -->
+  <div id="incognito-banner" class="incognito-banner hidden">
+    <span>⚠️ Incognito tabs excluded</span>
+    <button id="btn-enable-incognito" class="btn-link">Enable in Settings</button>
+  </div>
+
+  <!-- ── Tab Bar ────────────────────────────────────────────── -->
+  <nav class="tab-bar" role="tablist">
+    <button class="tab-btn active" data-tab="copy"    role="tab">📋 Copy</button>
+    <button class="tab-btn"        data-tab="export"  role="tab">💾 Export</button>
+    <button class="tab-btn"        data-tab="preview" role="tab">👁 Preview</button>
+    <button class="tab-btn"        data-tab="groups"  role="tab">🗂 Groups</button>
+    <button class="tab-btn"        data-tab="sendto"  role="tab">📤 Share</button>
+    <button class="tab-btn"        data-tab="import"  role="tab">🚀 Opener</button>
+    <button class="tab-btn"        data-tab="history" role="tab">🕘 History</button>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Panel 1: Copy
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="tab-copy" class="tab-panel active" role="tabpanel">
+
+    <p class="section-label">Scope</p>
+    <div class="scope-row">
+      <label class="radio-label"><input type="radio" name="scope" value="thisTab"> This tab</label>
+      <label class="radio-label"><input type="radio" name="scope" value="selected" checked> Selected tabs</label>
+      <label class="radio-label"><input type="radio" name="scope" value="window"> This window</label>
+      <label class="radio-label"><input type="radio" name="scope" value="allWindows"> All windows</label>
+    </div>
+
+    <p class="section-label mt8">Format &amp; Options</p>
+    <div class="options-row">
+      <select id="format-select" aria-label="Output format">
+        <option value="plain">One URL per line</option>
+        <option value="markdown">Markdown [title](url)</option>
+        <option value="json">JSON array</option>
+        <option value="csv">CSV (title, url)</option>
+        <option value="html">HTML list</option>
+      </select>
+      <label class="dedup-label" title="Number links (1., 2., 3.)">
+        <input type="checkbox" id="numbering-toggle" checked>
+        1, 2, 3…
+      </label>
+      <label class="dedup-label" title="Remove tabs with duplicate URLs">
+        <input type="checkbox" id="dedup-toggle">
+        Dedup
+      </label>
+      <label class="dedup-label" title="Strip tracking query parameters (utm_*, fbclid, etc.)">
+        <input type="checkbox" id="clean-url-toggle">
+        🛡️ Clean
+      </label>
+    </div>
+
+    <!-- Actions: Copy and Copy & Close -->
+    <div class="btn-group mt10">
+      <button id="btn-copy" class="btn primary flex-1">📋 Copy to Clipboard</button>
+      <button id="btn-copy-close" class="btn secondary flex-1" title="Copy links and close selected tabs to free memory">🧹 Copy &amp; Close</button>
+    </div>
+
+    <div class="hotkey-hint mt8">
+      <span>💡 Tip: Press <code>Cmd+Shift+C</code> to copy, or <code>Cmd+Shift+X</code> to copy &amp; close.</span>
+    </div>
+
+    <div id="incognito-active-chip" class="incognito-chip hidden">🕵 Incognito included</div>
+    <div id="copy-toast" class="toast hidden"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Panel 2: Export
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="tab-export" class="tab-panel hidden" role="tabpanel">
+
+    <p class="section-label">Quick Actions: Copy &amp; Export</p>
+    <div class="quick-export-grid">
+      <button id="btn-export-thistab" class="btn-quick-export" title="Copy to clipboard and download file for this tab">
+        <span class="quick-icon">📌</span>
+        <span class="quick-title">Copy &amp; Export<br><strong>This Tab</strong></span>
+      </button>
+
+      <button id="btn-export-selected" class="btn-quick-export" title="Copy to clipboard and download file for selected tabs">
+        <span class="quick-icon">🗂</span>
+        <span class="quick-title">Copy &amp; Export<br><strong>Selected Tabs</strong></span>
+      </button>
+
+      <button id="btn-export-window" class="btn-quick-export" title="Copy to clipboard and download file for this window">
+        <span class="quick-icon">🪟</span>
+        <span class="quick-title">Copy &amp; Export<br><strong>This Window</strong></span>
+      </button>
+
+      <button id="btn-export-allwindows" class="btn-quick-export" title="Copy to clipboard and download file for all windows">
+        <span class="quick-icon">🌐</span>
+        <span class="quick-title">Copy &amp; Export<br><strong>All Windows</strong></span>
+      </button>
+    </div>
+
+    <hr class="section-divider">
+
+    <p class="section-label">Custom Export Settings</p>
+
+    <div class="field-row">
+      <span class="field-label">Format:</span>
+      <select id="export-format-select" class="flex-select">
+        <option value="docx">Word document (.docx)</option>
+        <option value="md">Markdown (.md)</option>
+        <option value="txt">Plain text (.txt)</option>
+        <option value="json">JSON (.json)</option>
+        <option value="csv">CSV Spreadsheet (.csv)</option>
+      </select>
+    </div>
+
+    <div class="field-row mt6">
+      <span class="field-label">Scope:</span>
+      <div class="export-scope-radios">
+        <label class="radio-label"><input type="radio" name="export-scope" value="thisTab"> This tab</label>
+        <label class="radio-label"><input type="radio" name="export-scope" value="selected" checked> Selected</label>
+        <label class="radio-label"><input type="radio" name="export-scope" value="window"> Window</label>
+        <label class="radio-label"><input type="radio" name="export-scope" value="allWindows"> All</label>
+      </div>
+    </div>
+
+    <div class="field-row mt6">
+      <span class="field-label">Options:</span>
+      <div class="export-scope-radios">
+        <label class="dedup-label" title="Number links (1., 2., 3.)">
+          <input type="checkbox" id="export-numbering-toggle" checked>
+          1, 2, 3…
+        </label>
+        <label class="dedup-label" title="Remove tabs with duplicate URLs">
+          <input type="checkbox" id="export-dedup-toggle">
+          Dedup
+        </label>
+        <label class="dedup-label" title="Strip tracking query parameters (utm_*, fbclid, etc.)">
+          <input type="checkbox" id="export-clean-url-toggle">
+          🛡️ Clean URLs
+        </label>
+      </div>
+    </div>
+
+    <div class="export-action-btns mt10">
+      <button id="btn-do-copy-export" class="btn primary full-width">⚡ Copy &amp; Export (Both)</button>
+      <button id="btn-do-export-only" class="btn secondary full-width mt6">💾 Download File Only</button>
+      <button id="btn-do-export-close" class="btn ghost full-width mt6" title="Download file and close exported tabs to free memory">🧹 Export &amp; Close Tabs</button>
+    </div>
+
+    <div id="export-toast" class="toast hidden mt8"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Panel 3: Advanced Preview & Sorting
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="tab-preview" class="tab-panel hidden" role="tabpanel">
+
+    <!-- Search & Sort Controls -->
+    <div class="preview-toolbar">
+      <input type="text" id="preview-search" class="preview-search-input" placeholder="🔍 Search title or URL…">
+      <select id="preview-sort" class="preview-sort-select" title="Sort tab list">
+        <option value="default">📑 Tab order</option>
+        <option value="alpha">🔤 Title (A–Z)</option>
+        <option value="domain">🌐 Website/Domain</option>
+        <option value="reverse">🔄 Reverse</option>
+      </select>
+    </div>
+
+    <!-- Domain Analytics & Filter Pills -->
+    <div id="preview-domain-bar" class="preview-domain-bar"></div>
+
+    <!-- Summary Header & Memory Saver -->
+    <div class="preview-summary-row">
+      <div id="preview-summary" class="preview-summary">
+        <span class="preview-count">—</span>
+      </div>
+      <div class="memory-actions">
+        <span id="memory-stats-text" class="memory-stats-text" title="Estimated memory used by open tabs">🧠 ~120 MB</span>
+        <button id="btn-hibernate-tabs" class="btn ghost small" title="Discard/freeze background tabs to free Chrome memory">💤 Sleep Tabs</button>
+        <button id="btn-close-duplicates" class="btn ghost small" title="Close duplicate URLs running in Chrome to free RAM">🧹 Close Dups</button>
+      </div>
+    </div>
+
+    <!-- Bulk Selection Bar -->
+    <div class="preview-bulk-bar">
+      <label class="dedup-label">
+        <input type="checkbox" id="preview-select-all" checked>
+        Select all
+      </label>
+      <button id="btn-preview-remove-selected" class="btn ghost small" title="Exclude unchecked tabs">✕ Exclude unselected</button>
+    </div>
+
+    <!-- Tab List -->
+    <div id="preview-list" class="preview-list">
+      <div class="empty-state">Switch to this tab to load preview</div>
+    </div>
+
+    <div class="preview-action-row mt8">
+      <button id="btn-preview-copy" class="btn primary flex-1" disabled>
+        Confirm &amp; Copy
+      </button>
+      <button id="btn-preview-export" class="btn secondary flex-1" disabled>
+        Export File
+      </button>
+    </div>
+    <div id="preview-toast" class="toast hidden"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Panel 4: Groups
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="tab-groups" class="tab-panel hidden" role="tabpanel">
+    <p class="section-hint">Copy or export all tabs in a Chrome tab group.</p>
+    <div id="groups-list" class="groups-list">
+      <div class="empty-state">Loading…</div>
+    </div>
+    <div id="groups-toast" class="toast hidden mt8"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Panel 5: Cloud & Sharing (QR Code, Email, Social)
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="tab-sendto" class="tab-panel hidden" role="tabpanel">
+
+    <p class="section-label">QR Code Mobile Transfer</p>
+    <div class="qr-card">
+      <div class="qr-header">
+        <select id="qr-target-select" class="qr-select">
+          <option value="active">Active Tab URL</option>
+          <option value="bundle">Bundle: All Selected URLs</option>
+        </select>
+        <button id="btn-qr-download" class="btn ghost small">💾 Save QR</button>
+      </div>
+      <div class="qr-display-row">
+        <div id="qr-container" class="qr-container"></div>
+        <div class="qr-info">
+          <p class="qr-text" id="qr-url-text">Scan with your phone camera to open instantly.</p>
+          <button id="btn-qr-copy-url" class="btn secondary small mt6">Copy URL</button>
+        </div>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <p class="section-label">Quick Share</p>
+    <div class="share-btn-row">
+      <button id="btn-share-email" class="btn ghost flex-1" title="Compose an email with these links">
+        📧 Email Tabs
+      </button>
+      <button id="btn-share-whatsapp" class="btn ghost flex-1" title="Share links via WhatsApp Web">
+        💬 WhatsApp
+      </button>
+      <button id="btn-share-telegram" class="btn ghost flex-1" title="Share links via Telegram">
+        ✈️ Telegram
+      </button>
+    </div>
+
+    <hr class="section-divider">
+
+    <p class="section-label">Productivity Apps</p>
+    <div class="send-cards">
+      <div class="send-card">
+        <div class="send-card-icon">🟣</div>
+        <div class="send-card-info">
+          <div class="send-card-title">Obsidian</div>
+          <div class="send-card-desc">Opens a new note with Markdown links</div>
+        </div>
+        <button id="btn-obsidian" class="btn primary small">Open</button>
+      </div>
+
+      <div class="send-card">
+        <div class="send-card-icon">⬛</div>
+        <div class="send-card-info">
+          <div class="send-card-title">Notion</div>
+          <div class="send-card-desc">Copies URLs &amp; opens notion.so to paste</div>
+        </div>
+        <button id="btn-notion" class="btn primary small">Open</button>
+      </div>
+
+      <div class="send-card">
+        <div class="send-card-icon">📄</div>
+        <div class="send-card-info">
+          <div class="send-card-title">Google Docs</div>
+          <div class="send-card-desc">Copies URLs &amp; opens docs.new to paste</div>
+        </div>
+        <button id="btn-gdocs" class="btn primary small">Open</button>
+      </div>
+    </div>
+
+    <div id="sendto-toast" class="toast hidden mt8"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Panel 6: Multiple Tab Opener (Supports 150+ Links)
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="tab-import" class="tab-panel hidden" role="tabpanel">
+    <div class="opener-header">
+      <p class="section-label">Bulk Tab Opener</p>
+      <span id="import-count-badge" class="import-badge">0 / 150+ links</span>
+    </div>
+
+    <textarea id="import-textarea" class="import-textarea" placeholder="Paste up to 150+ URLs here (one per line, markdown [title](url), or raw text)..."></textarea>
+
+    <div class="import-toolbar mt6">
+      <button id="btn-import-clipboard" class="btn ghost small">📋 Paste Clipboard</button>
+      <button id="btn-import-file-btn" class="btn ghost small">📁 Load File</button>
+      <input type="file" id="import-file-input" accept=".txt,.md,.csv" style="display:none">
+      <button id="btn-import-clear" class="btn ghost small">🧹 Clear</button>
+    </div>
+
+    <div class="field-row mt10">
+      <span class="field-label">Target:</span>
+      <select id="import-target-select" class="flex-select">
+        <option value="current">Current Window</option>
+        <option value="newWindow">New Single Window</option>
+        <option value="incognito">New Incognito Window</option>
+        <option value="split50">Split across Windows (50 tabs/window)</option>
+        <option value="group">New Tab Group</option>
+      </select>
+    </div>
+
+    <div id="import-group-row" class="field-row mt6 hidden">
+      <span class="field-label">Group:</span>
+      <input type="text" id="import-group-name" class="import-group-input" placeholder="Imported Tabs" value="Bulk Opened Tabs">
+    </div>
+
+    <div class="field-row mt6">
+      <span class="field-label">Options:</span>
+      <div class="export-scope-radios" style="flex-wrap:wrap;gap:6px;">
+        <label class="dedup-label" title="Skip opening links that are already open in Chrome">
+          <input type="checkbox" id="import-skip-open" checked>
+          Skip already open
+        </label>
+        <label class="dedup-label" title="Throttle tabs (25ms) to ensure smooth loading without browser freeze">
+          <input type="checkbox" id="import-safe-mode" checked>
+          Smooth pacing
+        </label>
+        <label class="dedup-label" title="Open tabs inside private Incognito window(s)">
+          <input type="checkbox" id="import-incognito">
+          🕵 Open in Incognito
+        </label>
+      </div>
+    </div>
+
+    <div id="import-progress-container" class="import-progress-container hidden mt8">
+      <div class="import-progress-track">
+        <div id="import-progress-fill" class="import-progress-fill"></div>
+      </div>
+      <span id="import-progress-text" class="import-progress-text">Opening tabs…</span>
+    </div>
+
+    <div class="opener-action-row mt8" style="display:flex;gap:6px;">
+      <button id="btn-do-import" class="btn primary flex-1">🚀 Open Tabs in Browser</button>
+      <button id="btn-do-import-incog" class="btn secondary" title="Open directly in private Incognito window(s)" style="background:var(--incog-bg);color:var(--incog-fg);border:1px solid var(--incog-fg);font-weight:600;">🕵 Incognito</button>
+    </div>
+
+    <div id="import-toast" class="toast hidden mt8"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Panel 7: History with Smart Multi-Window Restoration
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="tab-history" class="tab-panel hidden" role="tabpanel">
+
+    <!-- Sub-navigation: Sessions | Workspaces | Backup -->
+    <div class="history-subnav">
+      <button class="subnav-btn active" data-subview="sessions">🕘 Sessions</button>
+      <button class="subnav-btn" data-subview="workspaces">🗄️ Workspaces (<span id="workspaces-count">0</span>)</button>
+      <button class="subnav-btn" data-subview="backup">💾 Backup &amp; Sync</button>
+    </div>
+
+    <!-- Sub-view 1: Recent Sessions -->
+    <div id="subview-sessions" class="history-subview">
+      <div class="history-header">
+        <div class="history-header-row">
+          <p class="section-label" style="margin-bottom:0;">Session History</p>
+          <div class="history-header-btns">
+            <button id="btn-snapshot-now" class="btn secondary small" title="Snapshot and save all current open tabs right now">
+              💾 Snapshot
+            </button>
+            <button id="btn-restore-latest" class="btn primary small" title="Reopen closed tabs from the most recent session">
+              🔄 Restore Last
+            </button>
+          </div>
+        </div>
+        <div class="history-options-row mt4">
+          <p class="section-hint" style="margin-bottom:0;">Reopen closed tabs into their original windows.</p>
+          <label class="dedup-label" title="Always restore tabs inside private Incognito window(s)">
+            <input type="checkbox" id="history-incognito-mode">
+            🕵 Restore in Incognito
+          </label>
+        </div>
+      </div>
+      <div id="history-toast" class="toast hidden mb8"></div>
+      <ul id="history-list" class="history-list">
+        <li><div class="empty-state">No operations yet</div></li>
+      </ul>
+      <div class="history-footer mt8">
+        <button id="btn-clear-history" class="btn ghost small">🧹 Clear history</button>
+      </div>
+    </div>
+
+    <!-- Sub-view 2: Saved Workspaces -->
+    <div id="subview-workspaces" class="history-subview hidden">
+      <div class="workspace-creator-card">
+        <p class="section-label" style="margin-bottom:4px;">Save Current Workspace</p>
+        <div class="workspace-create-row">
+          <input type="text" id="workspace-name-input" class="flex-input" placeholder="e.g. Work Research, Shopping...">
+          <button id="btn-save-workspace" class="btn primary small">💾 Save Tabs</button>
+        </div>
+      </div>
+      <div id="workspaces-toast" class="toast hidden mb8 mt6"></div>
+      <div id="workspaces-list" class="workspaces-list mt8">
+        <div class="empty-state">No saved workspaces yet.<br>Save your open tabs above to keep them permanently!</div>
+      </div>
+    </div>
+
+    <!-- Sub-view 3: Backup & Sync -->
+    <div id="subview-backup" class="history-subview hidden">
+      <div class="backup-cards">
+        <div class="backup-card">
+          <div class="backup-card-info">
+            <span class="backup-card-title">📤 Export Backup File</span>
+            <span class="backup-card-desc">Download a complete .json backup of your saved workspaces, session history, and settings.</span>
+          </div>
+          <button id="btn-export-backup" class="btn primary small">💾 Download Backup</button>
+        </div>
+
+        <div class="backup-card mt8">
+          <div class="backup-card-info">
+            <span class="backup-card-title">📥 Import / Restore Backup</span>
+            <span class="backup-card-desc">Load a saved .json backup file to restore your workspaces and sessions.</span>
+          </div>
+          <button id="btn-import-backup-trigger" class="btn secondary small">📁 Load Backup File</button>
+          <input type="file" id="backup-file-input" accept=".json" style="display:none">
+        </div>
+      </div>
+      <div id="backup-toast" class="toast hidden mt8"></div>
+    </div>
+
+  </div>
+
+  <!-- ── Scripts ─────────────────────────────────────────────── -->
+  <script src="../lib/jszip.min.js"></script>
+  <script src="../lib/docx-generator.js"></script>
+  <script src="../lib/qrcode.min.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
